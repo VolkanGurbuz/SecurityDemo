@@ -13,6 +13,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import static com.example.securitydemo.security.ApplicationUserRole.*;
 
@@ -32,7 +33,9 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
   protected void configure(HttpSecurity http) throws Exception {
     // ant matchers do not need to aut again after login
 
-    http.csrf()
+    http /*.csrf()
+         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+         .and()*/.csrf()
         .disable()
         .authorizeRequests()
         .antMatchers("/", "index", "/css/*", "/js/*")
@@ -42,7 +45,10 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
         .anyRequest()
         .authenticated()
         .and()
-        .httpBasic();
+        .formLogin()
+        .loginPage("/login")
+        .permitAll()
+        .defaultSuccessUrl("/courses", true);
   }
 
   @Override
@@ -52,7 +58,7 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
     UserDetails volkanUser =
         User.builder()
             .username("volkan")
-            .password(passwordEncoder.encode("test123"))
+            .password(passwordEncoder.encode("pass123"))
             .authorities(STUDENT.getGrantedAuthorities())
             .build();
 
