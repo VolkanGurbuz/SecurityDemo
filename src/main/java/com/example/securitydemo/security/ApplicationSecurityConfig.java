@@ -1,8 +1,11 @@
 package com.example.securitydemo.security;
 
+import com.example.securitydemo.auth.ApplicationUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -24,10 +27,13 @@ import static com.example.securitydemo.security.ApplicationUserRole.*;
 public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
 
   private final PasswordEncoder passwordEncoder;
+  private final ApplicationUserService applicationUserService;
 
   @Autowired
-  public ApplicationSecurityConfig(PasswordEncoder passwordEncoder) {
+  public ApplicationSecurityConfig(
+      PasswordEncoder passwordEncoder, ApplicationUserService applicationUserService) {
     this.passwordEncoder = passwordEncoder;
+    this.applicationUserService = applicationUserService;
   }
 
   @Override
@@ -48,10 +54,13 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
         .loginPage("/login")
         .permitAll()
         .defaultSuccessUrl("/courses", true)
+        .passwordParameter("password")
+        .usernameParameter("username")
         .and()
         .rememberMe()
         .tokenValiditySeconds((int) TimeUnit.DAYS.toSeconds(21))
         .key("somethingverysecured")
+        .rememberMeParameter("remember-me")
         .and()
         .logout()
         .logoutUrl("/logout")
@@ -62,32 +71,16 @@ public class ApplicationSecurityConfig extends WebSecurityConfigurerAdapter {
         .logoutSuccessUrl("/login");
   }
 
-  @Override
   @Bean
-  protected UserDetailsService userDetailsService() {
-    // how retrieve user from database
-    UserDetails volkanUser =
-        User.builder()
-            .username("volkan")
-            .password(passwordEncoder.encode("pass123"))
-            .authorities(STUDENT.getGrantedAuthorities())
-            .build();
+  public DaoAuthenticationProvider daoAuthenticationProvider() {
+    DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
+    daoAuthenticationProvider.setPasswordEncoder(passwordEncoder);
+    daoAuthenticationProvider.setUserDetailsService(applicationUserService);
+    return daoAuthenticationProvider;
+  }
 
-    UserDetails adminLinda =
-        User.builder()
-            .username("linda")
-            .password(passwordEncoder.encode("pass123"))
-            //            .roles(ADMIN.name())
-            .authorities(ADMIN.getGrantedAuthorities())
-            .build();
-
-    UserDetails adminTom =
-        User.builder()
-            .username("tom")
-            .password(passwordEncoder.encode("pass123"))
-            .authorities(ADMINTRAINEE.getGrantedAuthorities())
-            .build();
-
-    return new InMemoryUserDetailsManager(volkanUser, adminLinda, adminTom);
+  @Override
+  protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+    auth.authenticationProvider(daoAuthenticationProvider());
   }
 }
